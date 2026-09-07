@@ -235,6 +235,7 @@ export class Mob extends Entity {
   }
 
   serialize() {
-    return { species: this.species, x: this.x, y: this.y, hp: this.hp, guard: this.guard };
+    return { species: this.species, x: this.x, y: this.y, hp: this.hp,
+             guard: this.guard, dimension: this.dimension };
   }
 }

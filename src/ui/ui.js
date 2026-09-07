@@ -10,9 +10,9 @@ import { itemIcon } from '../gfx/sprites.js';
 import { HOTBAR } from '../systems/inventory.js';
 import { Inventory } from '../systems/inventory.js';
 import { QUEST_ORDER } from '../systems/quests.js';
-import { biomeAt } from '../world/worldgen.js';
+import { biomeAt, altarSite } from '../world/worldgen.js';
 import { SHOP } from '../entity/npc.js';
-import { ItemDrop } from '../entity/drop.js';
+import { SPECIES } from '../entity/mob.js';
 import { PAL } from '../gfx/palette.js';
 
 const $ = (id) => document.getElementById(id);
@@ -180,17 +180,38 @@ export class UI {
   }
 
   _updateQuest() {
-    const q = this.game.quests.tracked;
+    const g = this.game;
+    const q = g.quests.tracked;
     if (!q) { this.el.questBox.classList.add('hidden'); return; }
-    const have = this.game.quests.progress(q, this.game.player);
-    const line = `${q.title}|${have}/${q.count}`;
+    const have = g.quests.progress(q, g.player);
+
+    // The altar sits 400-600 tiles into the caves. Without a bearing a player
+    // would have to sweep the whole cave system to find it, so once the hunt
+    // is on, point the way.
+    let bearing = '';
+    if (q.id === 'hollowking' && g.player.dimension === 'cave') {
+      const a = altarSite(g.seed);
+      const dx = a.x - g.player.tx, dy = a.y - g.player.ty;
+      const dist = Math.round(Math.hypot(dx, dy));
+      bearing = dist < 12 ? ' · it is here'
+        : ` · ${UI.compass(dx, dy)} ${dist} tiles`;
+    }
+
+    const line = `${q.title}|${have}/${q.count}|${bearing}`;
     if (this._lastHud.quest === line) return;
     this._lastHud.quest = line;
     this.el.questBox.classList.remove('hidden');
     this.el.questTitle.textContent = q.title;
-    this.el.questStep.textContent = q.type === 'collect'
+    this.el.questStep.textContent = (q.type === 'collect'
       ? `${ITEMS[q.item]?.label ?? q.item} ${have}/${q.count}`
-      : `Defeat ${q.species.replace('_', ' ')} ${have}/${q.count}`;
+      : `Defeat ${SPECIES[q.species]?.label ?? q.species} ${have}/${q.count}`) + bearing;
+  }
+
+  /** Eight-point compass arrow for a direction vector. */
+  static compass(dx, dy) {
+    const a = Math.atan2(dy, dx);
+    const i = (Math.round(a / (Math.PI / 4)) + 8) % 8;
+    return ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'][i];
   }
 
   _drawMinimap() {
@@ -411,7 +432,7 @@ export class UI {
       const taken = inv.removeAt(index, stack.count);
       if (!taken) return;
       const p = this.game.player;
-      this.game.drops.push(new ItemDrop(p.x, p.y, taken.id, taken.count));
+      this.game.spawnDrop(p.x, p.y, taken.id, taken.count);
       this.game.audio.play('ui');
     });
     meta.appendChild(acts);
@@ -487,7 +508,7 @@ Object.assign(UI.prototype, {
           const left = inv.add(r.out, r.count);
           if (left > 0) {
             // Bag full: the overflow lands at your feet rather than vanishing.
-            this.game.drops.push(new ItemDrop(g.player.x, g.player.y, r.out, left));
+            g.spawnDrop(g.player.x, g.player.y, r.out, left);
           }
           g.player.stats.crafted++;
           g.audio.play('craft');
@@ -532,6 +553,21 @@ Object.assign(UI.prototype, {
         }
       }
       ctx.putImageData(img, 0, 0);
+
+      if (inCave && g.quests.isActive('hollowking')) {
+        // Clamp the marker to the map edge so it still points the way when the
+        // altar is far outside the visible range.
+        const a = altarSite(g.seed);
+        const rx = (a.x - g.player.tx) / range, ry = (a.y - g.player.ty) / range;
+        const m = Math.max(1, Math.abs(rx), Math.abs(ry));
+        const px = S / 2 + (rx / m) * (S / 2 - 5);
+        const py = S / 2 + (ry / m) * (S / 2 - 5);
+        ctx.fillStyle = PAL.arc4;
+        ctx.fillRect(px - 3, py - 3, 7, 7);
+        ctx.fillStyle = PAL.arc1;
+        ctx.fillRect(px - 1, py - 1, 3, 3);
+      }
+
       ctx.fillStyle = PAL.gold3;
       ctx.fillRect(S / 2 - 2, S / 2 - 2, 5, 5);
       ctx.strokeStyle = PAL.void;
@@ -546,7 +582,13 @@ Object.assign(UI.prototype, {
         <h3>Tally</h3>
         <p>Mined ${g.player.stats.mined} · Placed ${g.player.stats.placed}
            · Crafted ${g.player.stats.crafted} · Felled ${g.player.stats.killed}</p>
-        <p>Deepest descent: ${g.player.stats.deepest} tiles from the shaft</p>`;
+        <p>Deepest descent: ${g.player.stats.deepest} tiles from the shaft</p>
+        ${inCave && g.quests.isActive('hollowking') ? (() => {
+          const a = altarSite(g.seed);
+          const dx = a.x - g.player.tx, dy = a.y - g.player.ty;
+          return `<h3>The Hollow King</h3><p>Moon Altar: ${UI.compass(dx, dy)}
+                  ${Math.round(Math.hypot(dx, dy))} tiles</p>`;
+        })() : ''}`;
       body.appendChild(info);
     });
   },

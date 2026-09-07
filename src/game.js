@@ -122,9 +122,14 @@ export class Game {
       if (!SPECIES[m.species]) continue;
       const mob = new Mob(m.x, m.y, m.species, { guard: m.guard });
       mob.hp = m.hp;
+      mob.dimension = m.dimension ?? 'surface';
       this.mobs.push(mob);
     }
-    for (const dr of d.drops || []) this.drops.push(new ItemDrop(dr.x, dr.y, dr.itemId, dr.count));
+    for (const dr of d.drops || []) {
+      const drop = new ItemDrop(dr.x, dr.y, dr.itemId, dr.count);
+      drop.dimension = dr.dimension ?? 'surface';
+      this.drops.push(drop);
+    }
 
     this.camera.snapTo(this.player.x, this.player.y);
     this.start();
@@ -176,9 +181,10 @@ export class Game {
 
     if (!this.player.dead) this.player.update(dt, this);
 
-    for (const m of this.mobs) if (!m.dead) m.update(dt, this);
-    for (const n of this.npcs) n.update(dt, this);
-    for (const d of this.drops) d.update(dt, this);
+    const here = this.player.dimension;
+    for (const m of this.mobs) if (!m.dead && m.dimension === here) m.update(dt, this);
+    for (const n of this.npcs) if (n.dimension === here) n.update(dt, this);
+    for (const d of this.drops) if (d.dimension === here) d.update(dt, this);
     for (const p of this.projectiles) p.update(dt, this);
 
     this._cull();
@@ -237,11 +243,12 @@ export class Game {
     drop(this.projectiles);
     drop(this.npcs);
 
+    const here = this.player.dimension;
     this.entities.length = 0;
     if (!this.player.dead) this.entities.push(this.player);
-    for (const a of this.npcs) this.entities.push(a);
-    for (const a of this.mobs) this.entities.push(a);
-    for (const a of this.drops) this.entities.push(a);
+    for (const a of this.npcs) if (a.dimension === here) this.entities.push(a);
+    for (const a of this.mobs) if (a.dimension === here) this.entities.push(a);
+    for (const a of this.drops) if (a.dimension === here) this.entities.push(a);
     for (const a of this.projectiles) this.entities.push(a);
   }
 
@@ -306,10 +313,15 @@ export class Game {
       if (this._spawnedChunks.has(key)) continue;
       this._spawnedChunks.add(key);
       const px = s.x * TS + TS / 2, py = s.y * TS + TS / 2;
+      const dim = this.world.dimension;
       if (s.kind === 'npc') {
-        this.npcs.push(new NPC(px, py, s.role, { home: s.home, vseed: s.vseed }));
+        const npc = new NPC(px, py, s.role, { home: s.home, vseed: s.vseed });
+        npc.dimension = dim;
+        this.npcs.push(npc);
       } else if (s.kind === 'mob' && SPECIES[s.species]) {
-        this.mobs.push(new Mob(px, py, s.species, { guard: s.guard }));
+        const mob = new Mob(px, py, s.species, { guard: s.guard });
+        mob.dimension = dim;
+        this.mobs.push(mob);
       }
     }
     q.length = 0;
@@ -344,7 +356,9 @@ export class Game {
     if (!pos) return;
     // Never spawn something onto a lit tile — camps and torches should feel safe.
     if (this.lightMap.brightness(pos.x, pos.y) > 0.55) return;
-    this.mobs.push(new Mob(pos.x * TS + TS / 2, pos.y * TS + TS / 2, name));
+    const mob = new Mob(pos.x * TS + TS / 2, pos.y * TS + TS / 2, name);
+    mob.dimension = this.player.dimension;
+    this.mobs.push(mob);
   }
 
   /** A walkable tile just off screen, so nothing pops in visibly. */
@@ -362,9 +376,23 @@ export class Game {
   summonMob(species, x, y) {
     const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
     if (!this.world.isWalkable(tx, ty)) return;
-    this.mobs.push(new Mob(x, y, species));
+    const mob = new Mob(x, y, species);
+    mob.dimension = this.player.dimension;
+    this.mobs.push(mob);
     this.particles.burst(x, y, 12,
       { color: [PAL.arc2, PAL.arc3], speed: 60, life: 0.6, glow: true });
+  }
+
+  /**
+   * Creates a ground item in the player's current world.
+   * Everything that drops loot goes through here so the dimension tag is set
+   * in exactly one place.
+   */
+  spawnDrop(x, y, itemId, count = 1) {
+    const d = new ItemDrop(x, y, itemId, count);
+    d.dimension = this.player.dimension;
+    this.drops.push(d);
+    return d;
   }
 
   nearestNPC(range) {
@@ -397,7 +425,7 @@ Object.assign(Game.prototype, {
     for (const [item, min, max, chance] of def.drops || []) {
       if (this.rng.next() > (chance ?? 1)) continue;
       const n = min + Math.floor(this.rng.next() * (max - min + 1));
-      if (n > 0) this.drops.push(new ItemDrop(cx, cy, item, n));
+      if (n > 0) this.spawnDrop(cx, cy, item, n);
     }
     // A broken crop leaves tilled soil behind, ready to replant.
     if (def.crop) this.world.setGround(x, y, T.farmland);
@@ -507,8 +535,8 @@ Object.assign(Game.prototype, {
     const taken = inv.removeAt(inv.selected, 1);
     if (!taken) return;
     const dirs = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] }[this.player.facing];
-    this.drops.push(new ItemDrop(
-      this.player.x + dirs[0] * 12, this.player.y + dirs[1] * 12, taken.id, taken.count));
+    this.spawnDrop(this.player.x + dirs[0] * 12, this.player.y + dirs[1] * 12,
+                   taken.id, taken.count);
     this.audio.play('ui');
   },
 
@@ -566,7 +594,7 @@ Object.assign(Game.prototype, {
     this.audio.play('magic');
     const cx = x * TS + 8, cy = y * TS + 8;
     const loot = this.rng.weighted([[4, 'bone'], [3, 'coin'], [2, 'cloth'], [1, 'iron_bar']]);
-    this.drops.push(new ItemDrop(cx, cy, loot, this.rng.int(1, 3)));
+    this.spawnDrop(cx, cy, loot, this.rng.int(1, 3));
     // Disturbing the dead has consequences after dark.
     if (this.clock.isNight && this.rng.chance(0.55)) {
       this.summonMob('skeleton', cx + 16, cy);
@@ -605,11 +633,14 @@ Object.assign(Game.prototype, {
     // Both dimensions share a coordinate space, so the mouth and the exit align.
     this.player.x = x * TS + TS / 2;
     this.player.y = y * TS + TS / 2 + (to === 'cave' ? 20 : 20);
-    this.mobs.length = 0;
-    this.drops.length = 0;
+    // Ambient hostiles are disposable; guards and the boss keep their state.
+    // Villagers and dropped loot stay where they are — the dimension tag keeps
+    // them out of sight until you come back.
+    this.mobs = this.mobs.filter((m) => m.guard || m.isBoss);
     this.projectiles.length = 0;
     this.particles.clear();
-    this._spawnedChunks.clear();
+    // _spawnedChunks is keyed by dimension already. Clearing it here made every
+    // return trip re-run the village's spawn requests and duplicate its NPCs.
     this.camera.snapTo(this.player.x, this.player.y);
     this.audio.play('door');
     this.toast(to === 'cave' ? 'The dark closes over you' : 'Daylight', 'good');
@@ -621,7 +652,7 @@ Object.assign(Game.prototype, {
   damageArea(x, y, radius, damage, source, opts = {}) {
     let hits = 0;
     for (const m of this.mobs) {
-      if (m.dead) continue;
+      if (m.dead || m.dimension !== this.player.dimension) continue;
       if (Math.hypot(m.x - x, m.y - y) > radius + m.w / 2) continue;
       this.hitMob(m, damage, source, { ...opts, x, y });
       hits++;
@@ -660,7 +691,7 @@ Object.assign(Game.prototype, {
       speed: mob.isBoss ? 120 : 70, life: 0.8, gravity: 90, glow: !!mob.def.light,
     });
     for (const [id, n] of mob.rollDrops(this.rng)) {
-      this.drops.push(new ItemDrop(mob.x, mob.y, id, n));
+      this.spawnDrop(mob.x, mob.y, id, n);
     }
     if (mob.isBoss) {
       this.toast('The Hollow King falls. The dark thins.', 'good');

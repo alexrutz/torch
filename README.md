@@ -80,11 +80,13 @@ None of these are needed to play; they exist to make the game inspectable.
 
 ```sh
 node tools/check.mjs                    # parse every module as real ESM
-node tools/playtest.mjs                 # 26 gameplay assertions in a real browser
+node tools/playtest.mjs                 # 34 gameplay assertions in a real browser
 node tools/smoke.mjs desktop torch      # render + FPS + console errors
 node tools/smoke.mjs phone torch        # also: phone-landscape
 node tools/mapdump.mjs torch surface    # ASCII map of generated terrain
 node tools/mapdump.mjs torch cave       # ...and of the cave system
+node tools/soak.mjs 30 seedname          # 30 simulated minutes of random play
+node tools/lightprobe.mjs               # light falloff profile in a cave
 node tools/shot.mjs /tools/artsheet.html out.png   # every sprite, magnified
 ```
 
@@ -92,10 +94,15 @@ node tools/shot.mjs /tools/artsheet.html out.png   # every sprite, magnified
 files are treated as CommonJS by `--check`, which silently accepts real syntax
 errors in ES modules.
 
-`tools/playtest.mjs` drives an actual browser through mining, crafting,
-placing, edit persistence across a chunk reload, combat, quests, save/load,
-dimension travel, death and respawn, night spawning, the shade-versus-light
-mechanic, farming, tool tiers, and durability.
+`tools/playtest.mjs` drives an actual browser through 34 assertions: mining,
+crafting, placing, edit persistence across a chunk reload, combat, quests,
+save/load, dimension travel, death and respawn, night spawning, the
+shade-versus-light mechanic, farming, tool tiers, durability, recovering from
+being stuck inside rock, the boss hunt, and dimension scoping.
+
+`tools/soak.mjs` plays with random input for a long simulated stretch and
+asserts nothing drifts: no NaN positions, no unbounded chunk or entity growth,
+and no time spent sealed inside solid geometry.
 
 ## Notes on the generation
 

@@ -11,6 +11,10 @@ export class Entity {
     this.vx = 0; this.vy = 0;
     this.w = 10; this.h = 10;          // collision box, smaller than the sprite
     this.facing = 'down';
+    /** Which world this lives in. Surface and cave share a coordinate space,
+     *  so without this a villager standing at (x,y) above ground is also
+     *  simulated and drawn at (x,y) underground. */
+    this.dimension = 'surface';
     this.hp = 10; this.maxHp = 10;
     this.dead = false;
     this.remove = false;

@@ -61,7 +61,10 @@ export class ItemDrop extends Entity {
     ctx.globalAlpha = 1;
   }
 
-  serialize() { return { itemId: this.itemId, count: this.count, x: this.x, y: this.y }; }
+  serialize() {
+    return { itemId: this.itemId, count: this.count, x: this.x, y: this.y,
+             dimension: this.dimension };
+  }
 }
 
 export class Projectile extends Entity {

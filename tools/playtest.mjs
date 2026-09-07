@@ -412,6 +412,92 @@ const unstick = await run(async () => {
 check('a player embedded in rock is freed',
   unstick.embedded && unstick.freed, JSON.stringify(unstick));
 
+
+await reset();
+// ── 17. the boss hunt gives a bearing, and the altar is reachable ──
+const hunt = await run(async () => {
+  const g = window.game;
+  const { villageCaveMouth, altarSite } = await import('/src/world/worldgen.js');
+  const vm = villageCaveMouth(g.seed);
+  const altar = altarSite(g.seed);
+  // Put the player on the last quest, underground.
+  g.quests.completed = new Set(['kindle', 'ironwill', 'harvest', 'thinpack', 'rarefinds']);
+  g.quests.active = new Set(['hollowking']);
+  g.changeDimension('cave', vm.x, vm.y);
+  for (let i = 0; i < 10; i++) g.update(1 / 60);
+  g.ui.tick(0.5);
+  const tracker = document.getElementById('quest-step').textContent;
+
+  // Stand next to the altar and confirm the chamber and its occupant exist.
+  g.player.x = altar.x * 16 + 8;
+  g.player.y = (altar.y + 6) * 16 + 8;
+  g.camera.snapTo(g.player.x, g.player.y);
+  for (let i = 0; i < 30; i++) g.update(1 / 60);
+  const { byId } = await import('/src/world/tiles.js');
+  const onAltar = byId.get(g.world.getObject(altar.x, altar.y))?.name;
+  const boss = g.mobs.find((m) => m.species === 'shade_lord');
+  return {
+    tracker,
+    hasBearing: /[→↘↓↙←↖↑↗]/.test(tracker) && /tiles/.test(tracker),
+    onAltar,
+    bossPresent: !!boss,
+    bossHp: boss ? boss.hp : 0,
+  };
+});
+check('boss hunt shows a bearing', hunt.hasBearing, JSON.stringify(hunt));
+check('altar chamber is built', hunt.onAltar === 'altar', JSON.stringify(hunt));
+check('the boss is waiting there', hunt.bossPresent && hunt.bossHp > 300, JSON.stringify(hunt));
+
+
+await reset();
+// ── 18. entities stay in their own world ─────────────────────────
+// Surface and cave share a coordinate space, so a villager standing above
+// ground is at the same (x,y) as a spot underground.
+const dims = await run(async () => {
+  const g = window.game;
+  const { villageCaveMouth } = await import('/src/world/worldgen.js');
+  const vm = villageCaveMouth(g.seed);
+  g.changeDimension('surface', vm.x, vm.y);
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  const surfaceNpcs = g.npcs.length;
+  const drawnAbove = g.entities.filter((e) => e.role).length;
+
+  g.changeDimension('cave', vm.x, vm.y);
+  for (let i = 0; i < 120; i++) g.update(1 / 60);
+  const drawnBelow = g.entities.filter((e) => e.role).length;
+
+  // A trim + revisit must not re-run the village's spawn requests.
+  g.changeDimension('surface', vm.x, vm.y);
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  g.surface.chunks.clear();
+  g.changeDimension('cave', vm.x, vm.y);
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  g.changeDimension('surface', vm.x, vm.y);
+  for (let i = 0; i < 180; i++) g.update(1 / 60);
+
+  // A drop made underground must not be pickable from the surface.
+  g.changeDimension('cave', vm.x, vm.y);
+  g.spawnDrop(g.player.x, g.player.y, 'moonstone', 1);
+  const deepDrop = g.drops[g.drops.length - 1];
+  g.changeDimension('surface', vm.x, vm.y);
+  const held = g.player.inventory.count('moonstone');
+  g.player.x = deepDrop.x; g.player.y = deepDrop.y;
+  for (let i = 0; i < 120; i++) g.update(1 / 60);
+
+  return {
+    surfaceNpcs, drawnAbove, drawnBelow,
+    afterRoundTrip: g.npcs.length,
+    dropDimension: deepDrop.dimension,
+    pickedUpAcrossWorlds: g.player.inventory.count('moonstone') > held,
+  };
+});
+check('villagers are drawn above ground', dims.drawnAbove > 0, JSON.stringify(dims));
+check('villagers are not drawn underground', dims.drawnBelow === 0, JSON.stringify(dims));
+check('travelling does not duplicate villagers',
+  dims.afterRoundTrip === dims.surfaceNpcs, JSON.stringify(dims));
+check('loot dropped underground stays there',
+  dims.dropDimension === 'cave' && !dims.pickedUpAcrossWorlds, JSON.stringify(dims));
+
 await browser.close();
 server.close();
 
