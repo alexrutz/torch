@@ -117,6 +117,39 @@ await step('06-map', async () => {
   await page.keyboard.press('KeyM');
   await page.waitForTimeout(400);
 });
+await step('06b-dialogue', async () => {
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    const g = window.game;
+    const npc = g.npcs[0];
+    if (npc) { g.player.x = npc.x; g.player.y = npc.y + 20; g.ui.openDialogue(npc); }
+  });
+  await page.waitForTimeout(400);
+});
+
+await step('06c-shop', async () => {
+  await page.evaluate(() => {
+    const g = window.game;
+    g.player.inventory.add('coin', 400);
+    g.player.inventory.add('pelt', 3);
+    g.player.inventory.add('moonstone', 2);
+    g.ui.openShop(g.npcs[0]);
+  });
+  await page.waitForTimeout(400);
+});
+
+await step('06d-workbench', async () => {
+  await page.evaluate(() => {
+    const g = window.game;
+    const inv = g.player.inventory;
+    inv.add('wood', 30); inv.add('stone', 30); inv.add('stick', 20);
+    inv.add('fiber', 10); inv.add('iron_bar', 8); inv.add('leather', 4);
+    g.ui.openCrafting('workbench');
+  });
+  await page.waitForTimeout(400);
+});
+
 await step('07-night', async () => {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);

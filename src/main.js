@@ -24,6 +24,9 @@ function drawTitleArt() {
     torch: tileId('torch'), rock: tileId('rock'),
   };
   const player = humanSprite('player');
+  // Vertical offset for the whole scene. Tuned so the treeline sits about a
+  // third of the way down rather than leaving half the canvas as empty sky.
+  const YOFF = -30;
   let t = 0;
 
   function frame() {
@@ -32,23 +35,23 @@ function drawTitleArt() {
     ctx.fillRect(0, 0, W, H);
 
     // Ground
-    for (let y = 3; y < 6; y++) {
+    for (let y = 3; y < 7; y++) {   // one row past the canvas edge, so no gap
       for (let x = 0; x < W / TS + 1; x++) {
         const g = groundCanvas(y === 3 ? ids.grass : ids.dirt, x, y);
-        if (g) ctx.drawImage(g, x * TS, y * TS - 8);
+        if (g) ctx.drawImage(g, x * TS, y * TS + YOFF);
       }
     }
     // Treeline
     for (const [tx, kind] of [[0, 'tree'], [1, 'oak'], [7, 'tree'], [8, 'tree'], [9, 'oak']]) {
       const art = objectCanvas(ids[kind]);
-      if (art) ctx.drawImage(art.canvas, tx * TS + art.ox, 3 * TS - 8 + TS - art.canvas.height);
+      if (art) ctx.drawImage(art.canvas, tx * TS + art.ox, 3 * TS + YOFF + TS - art.canvas.height);
     }
     const rock = objectCanvas(ids.rock);
-    if (rock) ctx.drawImage(rock.canvas, 5 * TS + rock.ox, 4 * TS - 8 + TS - rock.canvas.height);
+    if (rock) ctx.drawImage(rock.canvas, 5 * TS + rock.ox, 4 * TS + YOFF + TS - rock.canvas.height);
 
     // The torch, and the figure standing in its light
     const torch = objectCanvas(ids.torch);
-    const tx = 4 * TS, ty = 4 * TS - 8;
+    const tx = 4 * TS, ty = 4 * TS + YOFF;
     if (torch) ctx.drawImage(torch.canvas, tx + torch.ox, ty + TS - torch.canvas.height);
     const walk = player.right[Math.floor(t * 5) % 4];
     ctx.drawImage(walk, tx + 20, ty + TS - 16);

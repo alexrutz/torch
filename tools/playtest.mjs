@@ -384,6 +384,34 @@ const chest = await run(async () => {
 });
 check('chests roll loot on first open', chest.rolled > 0, JSON.stringify(chest));
 
+
+await reset();
+// ── 16. a player inside rock digs themselves out ─────────────────
+const unstick = await run(async () => {
+  const g = window.game;
+  const { villageCaveMouth } = await import('/src/world/worldgen.js');
+  const vm = villageCaveMouth(g.seed);
+  g.changeDimension('cave', vm.x, vm.y);
+  // Find solid rock and drop the player right into the middle of it.
+  let rock = null;
+  for (let r = 8; r < 60 && !rock; r++) {
+    for (let a = 0; a < 32 && !rock; a++) {
+      const x = vm.x + Math.round(Math.cos(a / 32 * 6.283) * r);
+      const y = vm.y + Math.round(Math.sin(a / 32 * 6.283) * r);
+      if (g.world.isSolid(x, y)) rock = { x, y };
+    }
+  }
+  g.player.x = rock.x * 16 + 8;
+  g.player.y = rock.y * 16 + 8;
+  const embedded = g.world.isSolid(g.player.tx, g.player.ty);
+  for (let i = 0; i < 10; i++) g.update(1 / 60);
+  const freed = !g.world.isSolid(g.player.tx, g.player.ty);
+  g.changeDimension('surface', vm.x, vm.y);
+  return { embedded, freed, rock };
+});
+check('a player embedded in rock is freed',
+  unstick.embedded && unstick.freed, JSON.stringify(unstick));
+
 await browser.close();
 server.close();
 

@@ -22,9 +22,12 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
   box-shadow:0 0 0 2px #0b0e14, 0 4px 0 0 #0b0e1499, inset 0 0 0 1px #ffffff10}
 
 /* ── HUD ──────────────────────────────────────────────────────── */
+/* flex-start + margin-top:auto on the hotbar, rather than space-between:
+   space-between pushed the quest tracker to the vertical centre, where it
+   collided with the joystick on short landscape screens. */
 #hud{position:absolute;inset:0;pointer-events:none;z-index:10;
   padding:calc(var(--safe-t) + 6px) calc(var(--safe-r) + 6px) calc(var(--safe-b) + 6px) calc(var(--safe-l) + 6px);
-  display:flex;flex-direction:column;justify-content:space-between}
+  display:flex;flex-direction:column;justify-content:flex-start}
 #hud-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 #vitals{display:flex;flex-direction:column;gap:4px;width:min(38vw,168px)}
 .bar{position:relative;height:14px;background:#12111a;border:2px solid var(--edge);
@@ -56,7 +59,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 #questbox p{margin:2px 0 0;font-size:11px;color:var(--ink)}
 
 /* ── Hotbar ───────────────────────────────────────────────────── */
-#hud-bottom{display:flex;justify-content:center;pointer-events:none}
+#hud-bottom{display:flex;justify-content:center;pointer-events:none;margin-top:auto}
 #hotbar{display:flex;gap:3px;pointer-events:auto;padding:3px;
   background:#0b0e14bb;border:2px solid var(--edge);box-shadow:0 0 0 2px #05070c}
 .slot{position:relative;width:38px;height:38px;background:#1b1a24;border:2px solid #37324a;
@@ -91,6 +94,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 /* Landscape phones are short: tuck the column in beside the minimap instead. */
 @media (orientation:landscape) and (max-height:460px){
   #tmenu{top:calc(var(--safe-t) + 6px);right:calc(var(--safe-r) + 84px);flex-direction:column}
+  #questbox{max-width:min(40vw,200px)}
+  #stick{width:96px;height:96px;bottom:calc(var(--safe-b) + 58px)}
+  #tbtns{bottom:calc(var(--safe-b) + 58px)}
 }
 
 /* ── Panels (inventory / crafting / map / help) ───────────────── */

@@ -76,6 +76,7 @@ export class Player extends Entity {
   update(dt, game) {
     const { input, world } = game;
     this.applyPhysics(dt, world);
+    this._unstick(world);
 
     for (const k of Object.keys(this.effects)) {
       this.effects[k] -= dt;
@@ -151,6 +152,32 @@ export class Player extends Entity {
     if (this.dimension === 'cave') {
       this.stats.deepest = Math.max(this.stats.deepest,
         Math.round(Math.hypot(this.x, this.y) / TS));
+    }
+  }
+
+  /**
+   * Nudges the player out of solid geometry.
+   *
+   * Being inside a wall is unrecoverable — every axis of `moveBy` is blocked,
+   * so the player can neither walk out nor mine their way free. It should not
+   * happen in normal play, but a wall is a permanent soft-lock, and the check
+   * is a single tile lookup on the common path.
+   */
+  _unstick(world) {
+    if (!world.isSolid(this.tx, this.ty)) return;
+    // Spiral outward for the nearest open tile and step onto its centre.
+    for (let r = 1; r <= 6; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const nx = this.tx + dx, ny = this.ty + dy;
+          if (!world.isWalkable(nx, ny)) continue;
+          this.x = nx * TS + TS / 2;
+          this.y = ny * TS + TS / 2;
+          this.knockX = this.knockY = 0;
+          return;
+        }
+      }
     }
   }
 
