@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Torch — a mobile sandbox pixelart fantasy adventure. Explore, mine, build and survive the dark.">
+<title>Torch</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230b0e14'/><rect x='7' y='8' width='2' height='6' fill='%236b4a2f'/><rect x='6' y='4' width='4' height='4' fill='%23ffb347'/><rect x='7' y='2' width='2' height='3' fill='%23ffe9a8'/></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="game">
+  <canvas id="screen" aria-label="Torch game viewport"></canvas>
+
+  <!-- ── In-game HUD ───────────────────────────────────────────── -->
+  <div id="hud" class="hidden">
+    <div id="hud-top">
+      <div id="vitals">
+        <div class="bar" id="bar-health"><i></i><span>0</span></div>
+        <div class="bar" id="bar-energy"><i></i><span>0</span></div>
+      </div>
+      <div id="clockbox">
+        <canvas id="minimap" width="72" height="72"></canvas>
+        <div id="clock"><b id="clock-time">06:00</b><em id="clock-day">Day 1</em></div>
+      </div>
+    </div>
+
+    <div id="toasts"></div>
+
+    <div id="questbox" class="hidden">
+      <h4 id="quest-title">—</h4>
+      <p id="quest-step">—</p>
+    </div>
+
+    <div id="hud-bottom">
+      <div id="hotbar"></div>
+    </div>
+
+    <!-- touch controls, shown only on coarse pointers -->
+    <div id="touch" class="hidden">
+      <div id="stick"><i id="stick-knob"></i></div>
+      <div id="tbtns">
+        <button id="btn-b" class="tbtn" aria-label="Interact">✋</button>
+        <button id="btn-a" class="tbtn big" aria-label="Use item">⚔</button>
+      </div>
+      <div id="tmenu">
+        <button id="btn-inv" class="tbtn sm" aria-label="Inventory">🎒</button>
+        <button id="btn-craft" class="tbtn sm" aria-label="Crafting">⚒</button>
+        <button id="btn-map" class="tbtn sm" aria-label="Map">🗺</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panels ────────────────────────────────────────────────── -->
+  <div id="panel" class="hidden" role="dialog" aria-modal="true">
+    <div id="panel-inner">
+      <header><h2 id="panel-title">Inventory</h2><button id="panel-close" aria-label="Close">✕</button></header>
+      <div id="panel-body"></div>
+    </div>
+  </div>
+
+  <div id="dialogue" class="hidden">
+    <div id="dlg-inner">
+      <h3 id="dlg-name">—</h3>
+      <p id="dlg-text"></p>
+      <div id="dlg-choices"></div>
+    </div>
+  </div>
+
+  <!-- ── Title screen ──────────────────────────────────────────── -->
+  <div id="title">
+    <div id="title-art"><canvas id="title-canvas" width="160" height="72"></canvas></div>
+    <h1>TORCH</h1>
+    <p class="tag">a sandbox pixelart fantasy</p>
+    <div id="title-menu">
+      <button id="btn-continue" class="mbtn hidden">Continue</button>
+      <button id="btn-new" class="mbtn primary">New World</button>
+      <button id="btn-help" class="mbtn">How to Play</button>
+    </div>
+    <div id="seedrow">
+      <label for="seed-input">World seed</label>
+      <input id="seed-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="leave blank for random">
+    </div>
+    <p id="title-foot">Explore. Mine. Build. Outlast the dark.</p>
+  </div>
+
+  <div id="death" class="hidden">
+    <h2>You fell in the dark</h2>
+    <p id="death-sub">The night takes what it is owed.</p>
+    <button id="btn-respawn" class="mbtn primary">Wake at camp</button>
+  </div>
+
+  <div id="loading" class="hidden"><div class="spinner"></div><p id="loading-text">Shaping the world…</p></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Torch art sheet</title>
+<style>
+body{background:#1b1a24;color:#e8dcc0;font:11px ui-monospace,monospace;margin:0;padding:12px}
+h2{font-size:12px;letter-spacing:2px;color:#ffb347;margin:16px 0 6px;text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.cell{background:#0b0e14;border:1px solid #4a4459;padding:4px;text-align:center;width:88px}
+.cell canvas{image-rendering:pixelated;display:block;margin:0 auto 3px;background:#262433}
+.cell span{font-size:9px;color:#9c8f75;word-break:break-all;line-height:1.2}
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { buildTileArt, groundCanvas, objectCanvas, TS } from '/src/gfx/tileart.js';
+import { buildSprites, humanSprite, mobSprite, itemIcon, SKINS } from '/src/gfx/sprites.js';
+import { TILES } from '/src/world/tiles.js';
+import { ITEMS } from '/src/world/items.js';
+import { Font } from '/src/gfx/pixel.js';
+buildTileArt(); buildSprites();
+const out = document.getElementById('out');
+const Z = 4;
+function section(title){ const h=document.createElement('h2'); h.textContent=title; out.appendChild(h);
+  const r=document.createElement('div'); r.className='row'; out.appendChild(r); return r; }
+function cell(row, label, src, w, h){
+  const d=document.createElement('div'); d.className='cell';
+  const c=document.createElement('canvas'); c.width=w*Z; c.height=h*Z;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  if(src) x.drawImage(src,0,0,src.width,src.height,0,0,src.width*Z,src.height*Z);
+  const s=document.createElement('span'); s.textContent=label;
+  d.append(c,s); row.appendChild(d);
+}
+let r = section('Ground');
+for(const t of TILES.filter(t=>t.layer==='ground')) cell(r, t.name, groundCanvas(t.id,0,0), TS, TS);
+r = section('Objects');
+for(const t of TILES.filter(t=>t.layer==='object')){
+  const a=objectCanvas(t.id);
+  cell(r, t.name, a&&a.canvas, 16, a?a.canvas.height:16);
+}
+r = section('Characters (down / right)');
+for(const role of Object.keys(SKINS)){
+  const f=humanSprite(role);
+  const c=document.createElement('canvas'); c.width=12*2*Z; c.height=16*Z;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  x.drawImage(f.down[0],0,0,12,16,0,0,12*Z,16*Z);
+  x.drawImage(f.right[1],0,0,12,16,12*Z,0,12*Z,16*Z);
+  const d=document.createElement('div'); d.className='cell';
+  const s=document.createElement('span'); s.textContent=role; d.append(c,s); r.appendChild(d);
+}
+r = section('Mobs (all frames)');
+for(const name of ['slime','bat','wolf','wisp','shade','shade_lord']){
+  const sp=mobSprite(name); if(!sp) continue;
+  const c=document.createElement('canvas'); c.width=sp.w*sp.right.length*Z; c.height=sp.h*Z;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  sp.right.forEach((f,i)=>x.drawImage(f,0,0,sp.w,sp.h,i*sp.w*Z,0,sp.w*Z,sp.h*Z));
+  const d=document.createElement('div'); d.className='cell'; d.style.width='auto';
+  const s=document.createElement('span'); s.textContent=name; d.append(c,s); r.appendChild(d);
+}
+r = section('Item icons');
+for(const id of Object.keys(ITEMS)) cell(r, id, itemIcon(id), 16, 16);
+r = section('Font');
+{ const d=document.createElement('div'); d.className='cell'; d.style.width='auto';
+  const c=document.createElement('canvas'); c.width=420; c.height=90;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  x.fillStyle='#0b0e14'; x.fillRect(0,0,420,90);
+  Font.draw(x,'ABCDEFGHIJKLM',6,8,{scale:2});
+  Font.draw(x,'NOPQRSTUVWXYZ',6,28,{scale:2});
+  Font.draw(x,'0123456789 .,!?',6,48,{scale:2});
+  Font.draw(x,"-+=/()[]<>%*#@:;'\"",6,68,{scale:2});
+  const s=document.createElement('span'); s.textContent='bitmap font 5x7'; d.append(c,s); r.appendChild(d); }
+document.title='ready';
+</script></body></html>
